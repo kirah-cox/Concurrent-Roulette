@@ -39,7 +39,12 @@
                 player.Cts.Cancel();
             }
 
-            Thread.Sleep(500);
+            foreach (Player player in players)
+            {
+                player.GoAttendant.WaitOne(); 
+            }
+
+            //spin ball
 
             foreach (Player player in players)
             {
@@ -104,6 +109,7 @@ class Player
     public int Number { get; set; }
     public CancellationTokenSource Cts = new();
     public AutoResetEvent GoPlayer = new(false);
+    public AutoResetEvent GoAttendant = new(false);
 
     public Player(int number)
     {
@@ -119,7 +125,7 @@ class Player
             RoundWinAmount = 0;
             while(Balance > 0 && !Program.HaveWinner && !Cts.Token.IsCancellationRequested)
             {
-                if (GetRandom(4) == 1)
+                if (Random.Shared.Next(3) == 0)
                 {
                     IndividualBetAmount = GetRandom(51);
 
@@ -131,7 +137,7 @@ class Player
                     TotalWinAmount -= IndividualBetAmount;
                     RoundWinAmount -= IndividualBetAmount;
 
-                    if (GetRandom(37) == 1)
+                    if (Random.Shared.Next(36) == 0)
                     {
                         Balance += IndividualBetAmount * 36;
                         TotalWinAmount += IndividualBetAmount * 36;
@@ -141,6 +147,8 @@ class Player
 
                 Thread.Sleep(250);
             }
+
+            GoAttendant.Set();
         }
     }
 
