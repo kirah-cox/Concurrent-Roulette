@@ -37,80 +37,99 @@ public class Player
             RoundWinAmount = 0;
             while (Balance > 0 && !Program.HaveWinner && !Cts.Token.IsCancellationRequested)
             {
-                if (Random.Shared.Next(5) == 0)
+                if (ShouldIPlaceBet())
                 {
-                    IndividualBetAmount = Random.Shared.Next(5, 50);
+                    IndividualBetAmount = HowMuchToBet();
 
-                    TotalBetAmount += IndividualBetAmount;
-                    RoundBetAmount += IndividualBetAmount;
+                    AdjustBetAndWinAmounts();
 
-                    Balance -= IndividualBetAmount;
-
-                    TotalWinAmount -= IndividualBetAmount;
-                    RoundWinAmount -= IndividualBetAmount;
-
-                    int betType = Random.Shared.Next(13);
-
-                    if (betType == 0)
-                    {
-                        BettingMat.OneToEighteen[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 1)
-                    {
-                        BettingMat.NineteenToThirtySix[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 2)
-                    {
-                        BettingMat.Even[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 3)
-                    {
-                        BettingMat.Odd[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 4)
-                    {
-                        BettingMat.Red[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 5)
-                    {
-                        BettingMat.Black[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 6)
-                    {
-                        BettingMat.FirstDozen[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 7)
-                    {
-                        BettingMat.SecondDozen[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 8)
-                    {
-                        BettingMat.ThirdDozen[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 9)
-                    {
-                        BettingMat.FirstColumn[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 10)
-                    {
-                        BettingMat.SecondColumn[this] = IndividualBetAmount;
-                    }
-                    else if (betType == 11)
-                    {
-                        BettingMat.ThirdColumn[this] = IndividualBetAmount;
-                    }
-                    else
-                    {
-                        int numberBetOn = Random.Shared.Next(1, 37);
-                        BettingMat.SpecificNumber[(this, numberBetOn)] = IndividualBetAmount;
-                    }
-
+                    WhereToPlaceBet();
                 }
 
                 Thread.Sleep(250);
             }
 
             GoAttendant.Set();
+        }
+    }
+
+    private void AdjustBetAndWinAmounts()
+    {
+        TotalBetAmount += IndividualBetAmount;
+        RoundBetAmount += IndividualBetAmount;
+
+        Balance -= IndividualBetAmount;
+
+        TotalWinAmount -= IndividualBetAmount;
+        RoundWinAmount -= IndividualBetAmount;
+    }
+
+    private static int HowMuchToBet()
+    {
+        return Random.Shared.Next(5, 50);
+    }
+
+    private static bool ShouldIPlaceBet()
+    {
+        return Random.Shared.Next(5) == 0;
+    }
+
+    private void WhereToPlaceBet()
+    {
+        int betType = Random.Shared.Next(13);
+
+        if (betType == 0)
+        {
+            BettingMat.OneToEighteen[this] = IndividualBetAmount;
+        }
+        else if (betType == 1)
+        {
+            BettingMat.NineteenToThirtySix[this] = IndividualBetAmount;
+        }
+        else if (betType == 2)
+        {
+            BettingMat.Even[this] = IndividualBetAmount;
+        }
+        else if (betType == 3)
+        {
+            BettingMat.Odd[this] = IndividualBetAmount;
+        }
+        else if (betType == 4)
+        {
+            BettingMat.Red[this] = IndividualBetAmount;
+        }
+        else if (betType == 5)
+        {
+            BettingMat.Black[this] = IndividualBetAmount;
+        }
+        else if (betType == 6)
+        {
+            BettingMat.FirstDozen[this] = IndividualBetAmount;
+        }
+        else if (betType == 7)
+        {
+            BettingMat.SecondDozen[this] = IndividualBetAmount;
+        }
+        else if (betType == 8)
+        {
+            BettingMat.ThirdDozen[this] = IndividualBetAmount;
+        }
+        else if (betType == 9)
+        {
+            BettingMat.FirstColumn[this] = IndividualBetAmount;
+        }
+        else if (betType == 10)
+        {
+            BettingMat.SecondColumn[this] = IndividualBetAmount;
+        }
+        else if (betType == 11)
+        {
+            BettingMat.ThirdColumn[this] = IndividualBetAmount;
+        }
+        else
+        {
+            int numberBetOn = Random.Shared.Next(1, 37);
+            BettingMat.SpecificNumber[(this, numberBetOn)] = IndividualBetAmount;
         }
     }
 }
@@ -133,22 +152,13 @@ public class Game
 
             Console.WriteLine($"\n--- Round {RoundNumber} ---\n");
 
-            foreach (Player player in Players)
-            {
-                player.GoPlayer.Set();
-            }
+            SignalPlayersToStartBetting();
 
             Thread.Sleep(2000);
 
-            foreach (Player player in Players)
-            {
-                player.Cts.Cancel();
-            }
+            TellPlayersToStopBetting();
 
-            for (int i = 0; i < Players.Count; i++)
-            {
-                Players[i].GoAttendant.WaitOne();
-            }
+            WaitForPlayersToFinishBetting();
 
             SpinWheel();
 
@@ -156,11 +166,7 @@ public class Game
 
             DisplayBets();
 
-            foreach (Player player in Players)
-            {
-                player.Cts.Dispose();
-                player.Cts = new CancellationTokenSource();
-            }
+            GivePlayersNewCancellationTokens();
 
             Console.ReadKey();
             BettingMat.Reset();
@@ -169,6 +175,39 @@ public class Game
         foreach (Thread thread in Threads)
         {
             thread.Join();
+        }
+    }
+
+    private void GivePlayersNewCancellationTokens()
+    {
+        foreach (Player player in Players)
+        {
+            player.Cts.Dispose();
+            player.Cts = new CancellationTokenSource();
+        }
+    }
+
+    private void TellPlayersToStopBetting()
+    {
+        foreach (Player player in Players)
+        {
+            player.Cts.Cancel();
+        }
+    }
+
+    private void WaitForPlayersToFinishBetting()
+    {
+        for (int i = 0; i < Players.Count; i++)
+        {
+            Players[i].GoAttendant.WaitOne();
+        }
+    }
+
+    private void SignalPlayersToStartBetting()
+    {
+        foreach (Player player in Players)
+        {
+            player.GoPlayer.Set();
         }
     }
 
